@@ -96,6 +96,7 @@ def test_python_downgrade_reinstalls_noarch_packages(
             "--override-channels",
             "--channel=conda-forge",
             "python=3.9",
+            "--yes",
         )
         check_call([pip, "--version"])
 
@@ -437,9 +438,6 @@ def test_ca_certificates_pins(tmp_env: TmpEnvFixture, conda_cli: CondaCLIFixture
                 raise AssertionError("ca-certificates not found in LINK actions")
 
 
-@pytest.mark.skipif(
-    context.subdir == "osx-arm64", reason="python=2.7 not available in this platform"
-)
 def test_python_update_should_not_uninstall_history(
     tmp_env: TmpEnvFixture,
     conda_cli: CondaCLIFixture,
@@ -459,7 +457,9 @@ def test_python_update_should_not_uninstall_history(
     """
     channels = "--override-channels", "-c", "conda-forge"
     solver = "--solver", "rattler"
-    with tmp_env("python=3.8", "typing_extensions>=4.8", *channels, *solver) as prefix:
+    # Py27 not available in osx-arm64
+    platform = ("--platform", "osx-64") if context.subdir == "osx-arm64" else ()
+    with tmp_env("python=3.8", "typing_extensions>=4.8", *channels, *solver, *platform) as prefix:
         assert package_is_installed(prefix, "python=3.8")
         assert package_is_installed(prefix, "typing_extensions>=4.8")
         with pytest.raises(
@@ -698,3 +698,74 @@ def test_channel_subdir_set_correctly(tmp_env: TmpEnvFixture) -> None:
             if prec_path.name.startswith("tzdata-"):
                 payload = json.loads(prec_path.read_text())
                 assert payload["channel"].endswith("noarch")
+
+
+def test_python_does_not_change_unless_wanted(
+    tmp_env: TmpEnvFixture, conda_cli: CondaCLIFixture
+) -> None:
+    """
+    Ensure that the solver does not do extra work when trying to install something already there.
+    If we install a slightly older python (3.11.10, but 3.11.14 is available at the time of
+    writing) along with colorama, a 2nd colorama installation should NOT cause a python update
+    unless the user opts out the freezing strategy (default): --update-deps, requesting python;
+    both work.
+    """
+    args = "--override-channels", "--channel=conda-forge", "--solver=rattler"
+    with tmp_env(
+        *args,
+        "python=3.11.10",
+        "colorama",
+    ) as prefix:
+        out, err, rc = conda_cli(
+            "install",
+            *args,
+            f"--prefix={prefix}",
+            "--json",
+            "--dry-run",
+            "--freeze-installed",  # this is the default
+            "colorama",
+        )
+        assert rc == 0
+        assert json.loads(out)["message"] == "All requested packages already installed."
+
+        out, err, rc = conda_cli(
+            "install",
+            *args,
+            f"--prefix={prefix}",
+            "--json",
+            "--dry-run",
+            "--update-specs",  # we don't freeze, but history still pins python so nothing changes
+            "colorama",
+        )
+        assert rc == 0
+        assert json.loads(out)["message"] == "All requested packages already installed."
+
+        out, err, rc = conda_cli(
+            "install",
+            *args,
+            f"--prefix={prefix}",
+            "--json",
+            "--dry-run",
+            "--update-deps",  # now we do force a python update
+            "colorama",
+            raises=DryRunExit,
+        )
+        data = json.loads(out)
+        link_names = {pkg["name"] for pkg in data["actions"]["LINK"]}
+        unlink_names = {pkg["name"] for pkg in data["actions"]["UNLINK"]}
+        assert "python" in unlink_names.intersection(link_names)
+
+        out, err, rc = conda_cli(
+            "install",
+            *args,
+            f"--prefix={prefix}",
+            "--json",
+            "--dry-run",
+            "python",  # adding a bare python here also causes the update
+            "colorama",
+            raises=DryRunExit,
+        )
+        data = json.loads(out)
+        link_names = {pkg["name"] for pkg in data["actions"]["LINK"]}
+        unlink_names = {pkg["name"] for pkg in data["actions"]["UNLINK"]}
+        assert "python" in unlink_names.intersection(link_names)
