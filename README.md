@@ -26,6 +26,10 @@ To switch back at any time:
 conda config --remove-key solver
 ```
 
+## Contributing
+
+Please refer to [`CONTRIBUTING.md`](/CONTRIBUTING.md).
+
 ## Build status
 
 | [![Build status](https://github.com/conda/conda-rattler-solver/actions/workflows/tests.yml/badge.svg)](https://github.com/conda/conda-rattler-solver/actions/workflows/tests.yml?query=branch%3Amain) | [![Anaconda-Server Badge](https://anaconda.org/conda-canary/conda-rattler-solver/badges/latest_release_date.svg)](https://anaconda.org/conda-canary/conda-rattler-solver) |

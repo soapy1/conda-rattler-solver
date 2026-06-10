@@ -50,6 +50,19 @@ dependencies = { conda-build = "*" }
 [tool.pixi.feature.build.tasks]
 build = { cmd = "conda build recipe --override-channels -c conda-forge", env = {CONDA_SOLVER = "libmamba"} }
 
+[tool.pixi.feature.lint.dependencies]
+python = "3.12.*"
+pre-commit = "*"
+
+[tool.pixi.feature.lint.tasks.pre-commit]
+cmd = "pre-commit"
+description = "Run pre-commit hooks to lint the codebase."
+
+[tool.pixi.feature.lint.tasks.lint]
+cmd = "pre-commit"
+description = "Run pre-commit hooks to lint the codebase. Alias for `pre-commit` task."
+
+
 [tool.pixi.feature.docs.tasks]
 docs = { cmd = "python -m sphinx.cmd.build -M dirhtml . _build", cwd = "docs" }
 serve = { cmd = "python -m http.server", cwd = "docs/_build/dirhtml" }
@@ -126,6 +139,7 @@ build = ["build"]
 dev = ["py310"]
 docs = ["docs"]
 release = ["release"]
+lint = ["lint"]
 test-py310 = ["test", "py310"]
 test-py311 = ["test", "py311"]
 test-py312 = ["test", "py312"]
