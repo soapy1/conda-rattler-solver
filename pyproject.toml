@@ -121,6 +121,9 @@ python = "3.13.*"
 [tool.pixi.feature.release.dependencies]
 rever = "*"
 
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
+
 [tool.pixi.environments]
 build = ["build"]
 dev = ["py310"]
@@ -130,6 +133,7 @@ test-py310 = ["test", "py310"]
 test-py311 = ["test", "py311"]
 test-py312 = ["test", "py312"]
 test-py313 = ["test", "py313"]
+test-py314 = ["test", "py314"]
 
 [tool.hatch.build.hooks.vcs]
 version-file = "conda_rattler_solver/_version.py"
