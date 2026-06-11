@@ -26,9 +26,11 @@ To switch back at any time:
 conda config --remove-key solver
 ```
 
+You may also try this solver in isolated commands with no changes to your configuration by using the `--solver` flag:
+
 ## Contributing
 
-Please refer to [`CONTRIBUTING.md`](/CONTRIBUTING.md).
+Please refer to [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## Build status
 
