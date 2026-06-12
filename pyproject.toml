@@ -85,10 +85,11 @@ pre-commit = 'pre-commit'
 # Needed because we can't use pypi-dependencies to install it;
 # conda is already a conda dependency and pixi won't allow us to overwrite it
 _install-conda-dev = { cmd = "pip install -e ../conda --no-deps --no-build-isolation -q" }
+_init-conda-dev = { cmd = "python -m conda init --all"}
 
 [tool.pixi.feature.test.tasks.test]
 cmd = "python -m pytest"
-depends-on = ["_install-conda-dev"]
+depends-on = ["_install-conda-dev", "_init-conda-dev"]
 [tool.pixi.feature.test.tasks.test.env]
 CONDA_TEST_SOLVERS = "rattler"
 CONDA_TEST_DATA_DIR = "$PIXI_PROJECT_ROOT/../conda/tests/data"
@@ -135,6 +136,9 @@ python = "3.13.*"
 [tool.pixi.feature.release.dependencies]
 rever = "*"
 
+[tool.pixi.feature.py314.dependencies]
+python = "3.14.*"
+
 [tool.pixi.environments]
 build = ["build"]
 dev = ["py310"]
@@ -145,6 +149,7 @@ test-py310 = ["test", "py310"]
 test-py311 = ["test", "py311"]
 test-py312 = ["test", "py312"]
 test-py313 = ["test", "py313"]
+test-py314 = ["test", "py314"]
 
 [tool.hatch.build.hooks.vcs]
 version-file = "conda_rattler_solver/_version.py"

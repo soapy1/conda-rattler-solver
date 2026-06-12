@@ -441,12 +441,12 @@ jobs:
             test-type: integration
             test-group: 3
           - runs-on: macos-latest # osx-arm64
-            python-version: '3.13'
+            python-version: '3.14'
             default-channel: 'conda-forge'
             test-type: unit
             test-group: 1
           - runs-on: macos-latest # osx-arm64
-            python-version: '3.13'
+            python-version: '3.14'
             default-channel: 'conda-forge'
             test-type: unit
             test-group: 2
