@@ -26,7 +26,7 @@ from rattler.exceptions import SolverError as RattlerSolverError
 
 from . import __version__
 from .exceptions import RattlerUnsatisfiableError
-from .index import RattlerIndexHelper
+from .index import RattlerIndexHelper, PrefixPackages
 from .state import SolverInputState, SolverOutputState
 from .utils import (
     conda_match_spec_to_rattler_match_spec,
@@ -343,9 +343,10 @@ class RattlerSolver(Solver):
           variant.
         - virtual_packages: Details of the system.
         """
+        prefix_packages = PrefixPackages(in_state=in_state)
         solve_kwargs = {
             **self._collect_specs(in_state, out_state),
-            "sparse_repodata": [info.repo for info in index._index.values()],
+            "sources": [prefix_packages, *(info.repo for info in index._index.values())],
             "virtual_packages": self._rattler_virtual_packages(in_state),
             "channel_priority": (
                 rattler.ChannelPriority.Strict
@@ -353,17 +354,17 @@ class RattlerSolver(Solver):
                 else rattler.ChannelPriority.Disabled
             ),
             "strategy": "highest",
-            "package_format_selection": (
-                rattler.PackageFormatSelection.ONLY_TAR_BZ2
-                if context.use_only_tar_bz2
-                else rattler.PackageFormatSelection.PREFER_CONDA_WITH_WHL
-            ),
+            # "package_format_selection": (
+            #     rattler.PackageFormatSelection.ONLY_TAR_BZ2
+            #     if context.use_only_tar_bz2
+            #     else rattler.PackageFormatSelection.PREFER_CONDA_WITH_WHL
+            # ),
         }
         if log.isEnabledFor(logging.DEBUG):
             dumped = json.dumps(solve_kwargs, indent=2, default=str, sort_keys=True)
             log.debug("Solver input for attempt %s:\n%s", attempt, dumped)
         try:
-            solution = asyncio.run(rattler.solve_with_sparse_repodata(**solve_kwargs))
+            solution = asyncio.run(rattler.solve(**solve_kwargs))
         except RattlerSolverError as exc:
             self._maybe_raise_for_problems(str(exc), in_state, out_state)
             return exc

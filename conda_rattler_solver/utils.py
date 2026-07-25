@@ -103,6 +103,41 @@ class FakeRattlerLinkType(Enum):
     copy = "copy"
     directory = "directory"
 
+def conda_prefix_record_to_rattler_repodata_record(
+    record: PrefixRecord,
+) -> rattler.PrefixRecord:
+    if platform := record.get("platform"):
+        platform = platform.value
+    if noarch := record.get("noarch"):
+        noarch = rattler.NoArchType(noarch.value)
+    package_record = rattler.PackageRecord(
+        name=record.name,
+        version=record.version,
+        build=record.build,
+        build_number=record.build_number,
+        subdir=record.subdir,
+        arch=record.get("arch"),
+        platform=platform,
+        noarch=noarch,
+        depends=record.get("depends"),
+        constrains=record.get("constrains"),
+        sha256=bytes.fromhex(record.get("sha256") or "") or None,
+        md5=bytes.fromhex(record.get("md5", "") or "") or None,
+        size=record.get("size"),
+        features=record.get("features") or None,
+        legacy_bz2_md5=bytes.fromhex(record.get("legacy_bz2_md5", "") or "") or None,
+        legacy_bz2_size=record.get("legacy_bz2_size", 0),
+        license=record.get("license"),
+        license_family=record.get("license_family"),
+        python_site_packages_path=record.get("python_site_packages_path"),
+    )
+    return rattler.RepoDataRecord(
+        package_record=package_record,
+        file_name=record.fn,
+        url=record.url,
+        channel=record.channel.base_url,
+    )
+
 
 def conda_prefix_record_to_rattler_prefix_record(
     record: PrefixRecord,

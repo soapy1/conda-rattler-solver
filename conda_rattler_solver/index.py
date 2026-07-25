@@ -10,9 +10,10 @@ from functools import partial
 from pathlib import Path
 from string import hexdigits
 from tempfile import NamedTemporaryFile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import rattler
+from rattler.repo_data.source import RepoDataSource
 from conda.base.constants import REPODATA_FN
 from conda.base.context import context
 from conda.common.io import DummyExecutor, ThreadLimitedThreadPoolExecutor
@@ -26,11 +27,15 @@ try:
 except ImportError:
     from conda.common.serialize import json_dump
 
-from .utils import empty_repodata_dict, rattler_record_to_conda_record
+from .utils import empty_repodata_dict, rattler_record_to_conda_record, conda_prefix_record_to_rattler_repodata_record
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from typing import Self
+
+    from rattler.platform.platform import Platform
+    from rattler.package.package_name import PackageName
+    from rattler.repo_data.record import RepoDataRecord
 
     from conda.common.path import PathsType
     from conda.gateways.shards import BuildRepodataSubset
@@ -59,6 +64,25 @@ def _is_sharded_repodata_enabled():
     Flag to see whether we should check for sharded repodata.
     """
     return getattr(context, "repodata_use_shards", True)
+
+
+class PrefixPackages(RepoDataSource):
+    def __init__(self, in_state: SolverInputState):
+            self.in_state = in_state
+            # import pdb; pdb.set_trace()
+            self._installed = in_state.installed
+
+    async def fetch_package_records(self, platform: Platform, name: PackageName) -> List[RepoDataRecord]:
+        platform_str = str(platform)
+        return [
+            conda_prefix_record_to_rattler_repodata_record(package_record) 
+            for package_name, package_record in self._installed.items()
+            if package_name == name and package_record.subdir == platform_str
+        ]
+
+    def package_names(self, platform: Platform) -> List[str]:
+        platform_str = str(platform)
+        return [name for name, package_record in self._installed.items() if package_record.subdir == platform_str]
 
 
 class RattlerIndexHelper:
