@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 import os
 import random
 import shutil
@@ -52,6 +53,44 @@ class _ChannelRepoInfo:
     full_url: str
     noauth_url: str
     local_json: str | None
+
+    def merge(self, other: _ChannelRepoInfo) -> _ChannelRepoInfo:
+        if other.channel != self.channel:
+            raise ValueError("Can not merge _ChannelRepoInfo with conflicting channel.")
+        if other.full_url != self.full_url:
+            raise ValueError("Can not merge _ChannelRepoInfo with conflicting full_url.")
+        if other.noauth_url != self.noauth_url:
+            raise ValueError("Can not merge _ChannelRepoInfo with conflicting noauth_url.")
+        if self.local_json is None:
+            return other
+        if other.local_json is None:
+            return self
+
+        with open(self.local_json) as f:
+            merged_repodata = json.load(f)
+        with open(other.local_json) as f:
+            other_repodata = json.load(f)
+
+        # 'other' is assumed to carry the freshest data, so its entries win on conflict
+        for key in ("packages", "packages.conda"):
+            merged_repodata.setdefault(key, {}).update(other_repodata.get(key, {}))
+        for key, value in other_repodata.get("v3", {}).items():
+            merged_repodata.setdefault("v3", {}).setdefault(key, {}).update(value)
+
+        with open(self.local_json, "w") as f:
+            f.write(json_dump(merged_repodata))
+
+        noauth_url_sans_subdir, subdir = self.noauth_url.rsplit("/", 1)
+        rattler_channel = rattler.Channel(noauth_url_sans_subdir)
+        repo = rattler.SparseRepoData(rattler_channel, subdir, self.local_json)
+
+        return _ChannelRepoInfo(
+            channel=self.channel,
+            repo=repo,
+            full_url=self.full_url,
+            noauth_url=self.noauth_url,
+            local_json=self.local_json,
+        )
 
 
 def _is_sharded_repodata_enabled():
@@ -222,7 +261,12 @@ class RattlerIndexHelper:
             )
             if channel_data is None:
                 return None
-            self._index.update(self._load_repo_info_from_shards(channel_data))
+            loaded = self._load_repo_info_from_shards(channel_data)
+            for key, info in loaded.items():
+                if key in self._index:
+                    self._index[key] = info.merge(self._index[key])
+                else:
+                    self._index[key] = info
 
     def _load_channel_repo_info_shards(
         self, urls_to_channel: dict[str, Channel]
