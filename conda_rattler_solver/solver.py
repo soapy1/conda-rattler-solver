@@ -674,6 +674,19 @@ class RattlerSolver(Solver):
                     self._mark_missing_installed(spec.name, in_state, out_state)
                 else:
                     not_found[spec.name] = spec
+            elif "for which no candidates were found" in line:
+                # Same situation as "No candidates were found for" above, but reported as a
+                # nested reason under some other unsatisfiable package instead of as a
+                # standalone line, e.g. "foo >=2, for which no candidates were found." This
+                # happens when the name does have candidates in the index, just not any that
+                # satisfy the requested version (as opposed to being fully absent from it).
+                spec = line.split("for which no candidates were found", 1)[0].strip()
+                spec = MatchSpec(spec)
+                if any(spec.match(record) for record in in_state.installed.values()):
+                    unsatisfiable[spec.name] = spec
+                    self._mark_missing_installed(spec.name, in_state, out_state)
+                else:
+                    not_found[spec.name] = spec
 
         # Raise the exception for conda-build if needed
         self._maybe_raise_for_conda_build(
