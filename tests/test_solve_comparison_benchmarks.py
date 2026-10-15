@@ -127,6 +127,7 @@ def test_solve_update_all_large_lockfile(
 ):
     """Large workload: update --all on a silverback lockfile env (linux-64 only)."""
     monkeypatch.setenv("CONDA_SOLVER", solver_name)
+    monkeypatch.setenv("PYTHONPATH", "")
     reset_context()
     assert context.solver == solver_name
 
